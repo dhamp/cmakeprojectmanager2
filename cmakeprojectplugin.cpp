@@ -36,16 +36,28 @@
 #include "cmakeprojectconstants.h"
 #include "cmakelocatorfilter.h"
 #include "cmakefilecompletionassist.h"
+#include "cmakehighlighter.h"
 
 #include <coreplugin/featureprovider.h>
 #include <coreplugin/mimedatabase.h>
 #include <texteditor/texteditoractionhandler.h>
+#include <texteditor/highlighterfactory.h>
 
 #include <QtPlugin>
 #include <QDebug>
 
 
 using namespace CMakeProjectManager::Internal;
+
+class CMakeFeatureProvider : public Core::IFeatureProvider
+{
+    Core::FeatureSet availableFeatures(const QString & /* platform */) const {
+        return Core::FeatureSet(Core::Id(CMakeProjectManager::Constants::CMAKE_SUPPORT_FEATURE));
+    }
+
+    QStringList availablePlatforms() const { return QStringList(); }
+    QString displayNameForPlatform(const QString & /* platform */) const { return QString(); }
+};
 
 CMakeProjectPlugin::CMakeProjectPlugin()
 {
@@ -70,6 +82,14 @@ bool CMakeProjectPlugin::initialize(const QStringList & /*arguments*/, QString *
     addAutoReleasedObject(new CMakeEditorFactory(manager));
     addAutoReleasedObject(new CMakeLocatorFilter);
     addAutoReleasedObject(new CMakeFileCompletionAssistProvider(cmp));
+    addAutoReleasedObject(new CMakeFeatureProvider);
+
+    auto hf = new TextEditor::HighlighterFactory;
+    hf->setProductType<CMakeHighlighter>();
+    hf->setId(CMakeProjectManager::Constants::CMAKE_EDITOR_ID);
+    hf->addMimeType(CMakeProjectManager::Constants::CMAKEMIMETYPE);
+    hf->addMimeType(CMakeProjectManager::Constants::CMAKEPROJECTMIMETYPE);
+    addAutoReleasedObject(hf);
 
     return true;
 }

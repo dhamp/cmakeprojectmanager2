@@ -104,11 +104,6 @@ void CMakeBuildConfiguration::setUseNinja(bool useNninja)
     }
 }
 
-void CMakeBuildConfiguration::emitBuildTypeChanged()
-{
-    emit buildTypeChanged();
-}
-
 CMakeBuildConfiguration::~CMakeBuildConfiguration()
 { }
 

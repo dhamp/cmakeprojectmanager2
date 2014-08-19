@@ -27,77 +27,34 @@
 **
 ****************************************************************************/
 
-#ifndef CMAKEEDITOR_H
-#define CMAKEEDITOR_H
+#ifndef CMAKEHIGHLIGHTER_H
+#define CMAKEHIGHLIGHTER_H
 
-#include <texteditor/basetextdocument.h>
-#include <texteditor/basetexteditor.h>
-#include <texteditor/codeassist/completionassistprovider.h>
-#include <utils/uncommentselection.h>
-
-
-namespace TextEditor { class FontSettings; }
+#include <texteditor/syntaxhighlighter.h>
 
 namespace CMakeProjectManager {
 namespace Internal {
 
-class CMakeEditorWidget;
-class CMakeHighlighter;
-class CMakeManager;
-
-class CMakeEditor : public TextEditor::BaseTextEditor
+/* This is a simple syntax highlighter for CMake files.
+ * It highlights variables, commands, strings and comments.
+ * Multi-line strings and variables inside strings are also recognized. */
+class CMakeHighlighter : public TextEditor::SyntaxHighlighter
 {
     Q_OBJECT
-
 public:
-    CMakeEditor(CMakeEditorWidget *);
+    enum CMakeFormats {
+        CMakeVariableFormat,
+        CMakeFunctionFormat,
+        CMakeCommentFormat,
+        CMakeStringFormat,
+        CMakeVisualWhiteSpaceFormat
+    };
 
-    Core::IEditor *duplicate();
-    TextEditor::CompletionAssistProvider *completionAssistProvider();
-
-    QString contextHelpId() const;
-
-private slots:
-    void markAsChanged();
-    void build();
-};
-
-class CMakeEditorWidget : public TextEditor::BaseTextEditorWidget
-{
-    Q_OBJECT
-
-public:
-    CMakeEditorWidget(QWidget *parent = 0);
-    CMakeEditorWidget(CMakeEditorWidget *other);
-
-    bool save(const QString &fileName = QString());
-
-    Link findLinkAt(const QTextCursor &cursor, bool resolveTarget = true, bool inNextSplit = false);
-
-protected:
-    TextEditor::BaseTextEditor *createEditor();
-    void contextMenuEvent(QContextMenuEvent *e);
-
-public slots:
-    void unCommentSelection();
-
-private:
-    CMakeEditorWidget(TextEditor::BaseTextEditorWidget *); // avoid stupidity
-    void ctor();
-    Utils::CommentDefinition m_commentDefinition;
-};
-
-class CMakeDocument : public TextEditor::BaseTextDocument
-{
-    Q_OBJECT
-
-public:
-    CMakeDocument();
-    QString defaultPath() const;
-    QString suggestedFileName() const;
+    CMakeHighlighter(QTextDocument *document = 0);
+    virtual void highlightBlock(const QString &text);
 };
 
 } // namespace Internal
 } // namespace CMakeProjectManager
 
-#endif // CMAKEEDITOR_H
+#endif // PROFILEHIGHLIGHTER_H
