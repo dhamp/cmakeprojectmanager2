@@ -30,6 +30,7 @@
 #include "cmakeeditor.h"
 
 #include "cmakefilecompletionassist.h"
+#include "cmakehighlighter.h"
 #include "cmakeprojectconstants.h"
 #include "cmakeproject.h"
 
@@ -37,14 +38,12 @@
 #include <coreplugin/infobar.h>
 #include <coreplugin/actionmanager/actioncontainer.h>
 #include <coreplugin/actionmanager/actionmanager.h>
-#include <coreplugin/mimedatabase.h>
 #include <extensionsystem/pluginmanager.h>
 #include <projectexplorer/projectexplorer.h>
 #include <projectexplorer/session.h>
 #include <texteditor/texteditoractionhandler.h>
 #include <texteditor/texteditorconstants.h>
 #include <texteditor/texteditorsettings.h>
-#include <texteditor/highlighterutils.h>
 
 #include <QFileInfo>
 #include <QSharedPointer>
@@ -57,21 +56,26 @@ using namespace CMakeProjectManager::Internal;
 // ProFileEditorEditable
 //
 
-CMakeEditor::CMakeEditor()
+CMakeEditor::CMakeEditor(CMakeEditorWidget *editor)
+  : BaseTextEditor(editor)
 {
     setContext(Core::Context(CMakeProjectManager::Constants::C_CMAKEEDITOR,
               TextEditor::Constants::C_TEXTEDITOR));
     setDuplicateSupported(true);
-    setCommentStyle(Utils::CommentDefinition::HashStyle);
-    setCompletionAssistProvider(ExtensionSystem::PluginManager::getObject<CMakeFileCompletionAssistProvider>());
+    connect(document(), SIGNAL(changed()), this, SLOT(markAsChanged()));
 }
 
 Core::IEditor *CMakeEditor::duplicate()
 {
-    CMakeEditorWidget *ret = new CMakeEditorWidget;
-    ret->setTextDocument(editorWidget()->textDocumentPtr());
+    CMakeEditorWidget *ret = new CMakeEditorWidget(
+                qobject_cast<CMakeEditorWidget *>(editorWidget()));
     TextEditor::TextEditorSettings::initializeEditor(ret);
     return ret->editor();
+}
+
+TextEditor::CompletionAssistProvider *CMakeEditor::completionAssistProvider()
+{
+    return ExtensionSystem::PluginManager::getObject<CMakeFileCompletionAssistProvider>();
 }
 
 void CMakeEditor::markAsChanged()
@@ -105,7 +109,7 @@ void CMakeEditor::build()
 QString CMakeEditor::contextHelpId() const
 {
     int pos = position();
-    TextEditor::BaseTextDocument *doc = const_cast<CMakeEditor*>(this)->textDocument();
+    TextEditor::ITextEditorDocument* doc = const_cast<CMakeEditor*>(this)->textDocument();
 
     QChar chr;
     do {
@@ -148,16 +152,32 @@ QString CMakeEditor::contextHelpId() const
 // CMakeEditor
 //
 
-CMakeEditorWidget::CMakeEditorWidget()
+CMakeEditorWidget::CMakeEditorWidget(QWidget *parent)
+    : BaseTextEditorWidget(new CMakeDocument(), parent)
 {
-    setCodeFoldingSupported(true);
+    ctor();
+}
+
+CMakeEditorWidget::CMakeEditorWidget(CMakeEditorWidget *other)
+    : BaseTextEditorWidget(other)
+{
+    ctor();
+}
+
+void CMakeEditorWidget::ctor()
+{
+    m_commentDefinition.clearCommentStyles();
+    m_commentDefinition.singleLine = QLatin1Char('#');
 }
 
 TextEditor::BaseTextEditor *CMakeEditorWidget::createEditor()
 {
-    auto editor = new CMakeEditor;
-    connect(textDocument(), &Core::IDocument::changed, editor, &CMakeEditor::markAsChanged);
-    return editor;
+    return new CMakeEditor(this);
+}
+
+void CMakeEditorWidget::unCommentSelection()
+{
+    Utils::unCommentSelection(this, m_commentDefinition);
 }
 
 void CMakeEditorWidget::contextMenuEvent(QContextMenuEvent *e)
@@ -222,7 +242,7 @@ CMakeEditorWidget::Link CMakeEditorWidget::findLinkAt(const QTextCursor &cursor,
 
     // TODO: Resolve variables
 
-    QDir dir(QFileInfo(textDocument()->filePath()).absolutePath());
+    QDir dir(QFileInfo(baseTextDocument()->filePath()).absolutePath());
     QString fileName = dir.filePath(buffer);
     QFileInfo fi(fileName);
     if (fi.exists()) {
@@ -245,14 +265,13 @@ CMakeEditorWidget::Link CMakeEditorWidget::findLinkAt(const QTextCursor &cursor,
 //
 // CMakeDocument
 //
+
 CMakeDocument::CMakeDocument()
     : TextEditor::BaseTextDocument()
 {
     setId(CMakeProjectManager::Constants::CMAKE_EDITOR_ID);
     setMimeType(QLatin1String(CMakeProjectManager::Constants::CMAKEMIMETYPE));
-
-    Core::MimeType mimeType = Core::MimeDatabase::findByType(QLatin1String(Constants::CMAKEMIMETYPE));
-    setSyntaxHighlighter(TextEditor::createGenericSyntaxHighlighter(mimeType));
+    setSyntaxHighlighter(new CMakeHighlighter);
 }
 
 QString CMakeDocument::defaultPath() const

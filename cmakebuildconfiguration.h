@@ -61,8 +61,6 @@ public:
     bool useNinja() const;
     void setUseNinja(bool);
 
-    void emitBuildTypeChanged();
-
 signals:
     void useNinjaChanged(bool);
 

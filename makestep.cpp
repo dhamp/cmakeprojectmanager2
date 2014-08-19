@@ -45,8 +45,6 @@
 #include <qtsupport/qtkitinformation.h>
 #include <qtsupport/qtparser.h>
 
-#include <coreplugin/find/itemviewfind.h>
-
 #include <utils/qtcprocess.h>
 
 #include <QFormLayout>
@@ -142,7 +140,7 @@ void MakeStep::activeBuildConfigurationChanged()
 void MakeStep::buildTargetsChanged()
 {
     QStringList filteredTargets;
-    foreach (const QString &t, static_cast<CMakeProject *>(project())->buildTargetTitles()) {
+    foreach (const QString t, static_cast<CMakeProject *>(project())->buildTargetTitles()) {
         if (m_buildTargets.contains(t))
             filteredTargets.append(t);
     }
@@ -339,18 +337,10 @@ MakeStepConfigWidget::MakeStepConfigWidget(MakeStep *makeStep)
     m_additionalArguments->setText(m_makeStep->additionalArguments());
 
     m_buildTargetsList = new QListWidget;
-    m_buildTargetsList->setFrameStyle(QFrame::NoFrame);
     m_buildTargetsList->setMinimumHeight(200);
+    fl->addRow(tr("Targets:"), m_buildTargetsList);
 
-    QFrame *frame = new QFrame(this);
-    frame->setFrameStyle(QFrame::StyledPanel);
-    QVBoxLayout *frameLayout = new QVBoxLayout(frame);
-    frameLayout->setMargin(0);
-    frameLayout->addWidget(Core::ItemViewFind::createSearchableWrapper(m_buildTargetsList,
-                                                                       Core::ItemViewFind::LightColored));
-
-    fl->addRow(tr("Targets:"), frame);
-
+    // TODO update this list also on rescans of the CMakeLists.txt
     CMakeProject *pro = static_cast<CMakeProject *>(m_makeStep->project());
     QStringList targetList = pro->buildTargetTitles();
     targetList.sort();
