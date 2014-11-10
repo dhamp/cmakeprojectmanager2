@@ -362,7 +362,7 @@ QStringList CMakeProject::buildTargetTitles(bool runnable) const
 {
     QStringList results;
     foreach (const CMakeBuildTarget &ct, m_buildTargets) {
-        if (runnable && (ct.executable.isEmpty() || ct.targetType != ExecutableType))
+        if (runnable && (ct.executable.isEmpty() || ct.library))
             continue;
         results << ct.title;
     }
@@ -626,7 +626,7 @@ void CMakeProject::updateRunConfigurations(Target *t)
     }
 
     foreach (const CMakeBuildTarget &ct, buildTargets()) {
-        if (ct.targetType != ExecutableType)
+        if (ct.library)
             continue;
         if (ct.executable.isEmpty())
             continue;
@@ -692,9 +692,8 @@ void CMakeProject::updateApplicationAndDeploymentTargets()
         if (ct.executable.isEmpty())
             continue;
 
-        if (ct.targetType == ExecutableType || ct.targetType == DynamicLibraryType)
-            deploymentData.addFile(ct.executable, deploymentPrefix + buildDir.relativeFilePath(QFileInfo(ct.executable).dir().path()), DeployableFile::TypeExecutable);
-        if (ct.targetType == ExecutableType) {
+        deploymentData.addFile(ct.executable, deploymentPrefix + buildDir.relativeFilePath(QFileInfo(ct.executable).dir().path()), DeployableFile::TypeExecutable);
+        if (!ct.library) {
             // TODO: Put a path to corresponding .cbp file into projectFilePath?
             appTargetList.list << BuildTargetInfo(ct.title,
                                                   Utils::FileName::fromString(ct.executable),
@@ -869,6 +868,20 @@ void CMakeCbpParser::sortFiles()
     CMakeBuildTarget *last = 0;
     Utils::FileName parentDirectory;
 
+    // find a good build target to fall back
+    int fallbackIndex = 0;
+    {
+        int bestIncludeCount = -1;
+        for (int i = 0; i < m_buildTargets.size(); ++i) {
+            const CMakeBuildTarget &target = m_buildTargets.at(i);
+            if (target.sourceDirectory == m_sourceDirectory
+                    && target.includeFiles.count() > bestIncludeCount) {
+                bestIncludeCount = target.includeFiles.count();
+                fallbackIndex = i;
+            }
+        }
+    }
+
     foreach (const Utils::FileName &fileName, fileNames) {
         if (fileName.parentDir() == parentDirectory && last) {
             // easy case, same parent directory as last file
@@ -891,7 +904,7 @@ void CMakeCbpParser::sortFiles()
             }
 
             if (bestIndex == -1 && !m_buildTargets.isEmpty())
-                bestIndex = 0;
+                bestIndex = fallbackIndex;
 
             if (bestIndex != -1) {
                 m_buildTargets[bestIndex].files.append(fileName.toString());
@@ -1001,7 +1014,7 @@ void CMakeCbpParser::parseBuildTargetOption()
     } else if (attributes().hasAttribute(QLatin1String("type"))) {
         const QStringRef value = attributes().value(QLatin1String("type"));
         if (value == QLatin1String("2") || value == QLatin1String("3"))
-            m_buildTarget.targetType = TargetType(value.toInt());
+            m_buildTarget.library = true;
     } else if (attributes().hasAttribute(QLatin1String("working_dir"))) {
         m_buildTarget.workingDirectory = attributes().value(QLatin1String("working_dir")).toString();
         QDir dir(m_buildDirectory);
@@ -1228,7 +1241,7 @@ void CMakeBuildTarget::clear()
     workingDirectory.clear();
     sourceDirectory.clear();
     title.clear();
-    targetType = ExecutableType;
+    library = false;
     includeFiles.clear();
     compilerOptions.clear();
     defines.clear();

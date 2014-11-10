@@ -61,17 +61,11 @@ namespace Internal {
 class CMakeFile;
 class CMakeBuildSettingsWidget;
 
-enum TargetType {
-    ExecutableType = 0,
-    StaticLibraryType = 2,
-    DynamicLibraryType = 3
-};
-
 struct CMakeBuildTarget
 {
     QString title;
     QString executable; // TODO: rename to output?
-    TargetType targetType;
+    bool library;
     QString workingDirectory;
     QString sourceDirectory;
     QString makeCommand;
