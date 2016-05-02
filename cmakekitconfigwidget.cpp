@@ -30,6 +30,7 @@
 #include "cmaketool.h"
 
 #include <coreplugin/icore.h>
+#include <coreplugin/variablechooser.h>
 #include <projectexplorer/kit.h>
 #include <projectexplorer/projectexplorerconstants.h>
 
@@ -336,7 +337,7 @@ void CMakeConfigurationKitConfigWidget::editConfigurationChanges()
 
     QTC_ASSERT(!m_editor, return);
 
-    m_dialog = new QDialog(m_summaryLabel);
+    m_dialog = new QDialog(m_summaryLabel->window());
     m_dialog->setWindowTitle(tr("Edit CMake Configuration"));
     QVBoxLayout *layout = new QVBoxLayout(m_dialog);
     m_editor = new QPlainTextEdit;
@@ -344,13 +345,24 @@ void CMakeConfigurationKitConfigWidget::editConfigurationChanges()
                             "separated from the variable value by \"=\".<br>"
                             "You may provide a type hint by adding \":TYPE\" before the \"=\"."));
 
-    QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Apply|QDialogButtonBox::Cancel);
+    auto chooser = new Core::VariableChooser(m_dialog);
+    chooser->addSupportedWidget(m_editor);
+    chooser->addMacroExpanderProvider([this]() { return kit()->macroExpander(); });
+
+    auto buttons = new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Apply
+                                        |QDialogButtonBox::Reset|QDialogButtonBox::Cancel);
 
     layout->addWidget(m_editor);
     layout->addWidget(buttons);
 
     connect(buttons, &QDialogButtonBox::accepted, m_dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, m_dialog, &QDialog::reject);
+    connect(buttons, &QDialogButtonBox::clicked, m_dialog, [buttons, this](QAbstractButton *button) {
+        if (button != buttons->button(QDialogButtonBox::Reset))
+            return;
+        CMakeConfigurationKitInformation::setConfiguration(kit(),
+                                                           CMakeConfigurationKitInformation::defaultConfiguration(kit()));
+    });
     connect(m_dialog, &QDialog::accepted, this, &CMakeConfigurationKitConfigWidget::acceptChangesDialog);
     connect(m_dialog, &QDialog::rejected, this, &CMakeConfigurationKitConfigWidget::closeChangesDialog);
     connect(buttons->button(QDialogButtonBox::Apply), &QAbstractButton::clicked,

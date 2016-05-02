@@ -83,3 +83,4 @@ private:
 };
 
 } // namespace CMakeProjectManager
+

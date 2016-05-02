@@ -105,8 +105,9 @@ bool CMakeBuildConfiguration::fromMap(const QVariantMap &map)
         return false;
 
     const CMakeConfig conf
-    = Utils::transform(map.value(QLatin1String(CONFIGURATION_KEY)).toStringList(),
-                       [](const QString &v) { return CMakeConfigItem::fromString(v); });
+            = Utils::filtered(Utils::transform(map.value(QLatin1String(CONFIGURATION_KEY)).toStringList(),
+                                               [](const QString &v) { return CMakeConfigItem::fromString(v); }),
+                              [](const CMakeConfigItem &c) { return !c.isNull(); });
 
     // Legacy (pre QtC 3.7):
     const QStringList args = QtcProcess::splitArgs(map.value(QLatin1String(INITIAL_ARGUMENTS)).toString());
@@ -148,8 +149,6 @@ void CMakeBuildConfiguration::ctor()
             m_buildDirManager, &BuildDirManager::forceReparse);
     connect(this, &CMakeBuildConfiguration::buildDirectoryChanged,
             m_buildDirManager, &BuildDirManager::forceReparse);
-    connect(target(), &Target::kitChanged, this, &CMakeBuildConfiguration::maybeForceReparse);
-    connect(project, &Project::activeTargetChanged, this, &CMakeBuildConfiguration::maybeForceReparse);
 
     connect(this, &CMakeBuildConfiguration::parsingStarted, project, &CMakeProject::handleParsingStarted);
     connect(this, &CMakeBuildConfiguration::dataAvailable, project, &CMakeProject::parseCMakeOutput);
@@ -172,11 +171,6 @@ BuildDirManager *CMakeBuildConfiguration::buildDirManager() const
 bool CMakeBuildConfiguration::isParsing() const
 {
     return m_buildDirManager && m_buildDirManager->isParsing();
-}
-
-void CMakeBuildConfiguration::parse()
-{
-    m_buildDirManager->parse();
 }
 
 void CMakeBuildConfiguration::resetData()
