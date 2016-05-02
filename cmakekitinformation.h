@@ -51,8 +51,6 @@ public:
     void fix(ProjectExplorer::Kit *k) override;
     ItemList toUserOutput(const ProjectExplorer::Kit *k) const override;
     ProjectExplorer::KitConfigWidget *createConfigWidget(ProjectExplorer::Kit *k) const override;
-
-    void addToMacroExpander(ProjectExplorer::Kit *k, Utils::MacroExpander *expander) const override;
 };
 
 class CMAKE_EXPORT CMakeGeneratorKitInformation : public ProjectExplorer::KitInformation
@@ -85,6 +83,8 @@ public:
 
     static QStringList toStringList(const ProjectExplorer::Kit *k);
     static void fromStringList(ProjectExplorer::Kit *k, const QStringList &in);
+
+    static CMakeConfig defaultConfiguration(const ProjectExplorer::Kit *k);
 
     // KitInformation interface
     QVariant defaultValue(const ProjectExplorer::Kit *k) const override;
